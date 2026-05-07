@@ -69,46 +69,7 @@ IDLE -> INITIALIZING -> PLANNING -> SUPERVISING <-> REVIEWING
 | COMPLETED    | 所有标准满足，项目完成 |
 | ARCHIVED     | 项目已归档             |
 
-## 安装
 
-### 前置条件
-
-- Node.js 20 或更高版本
-- OpenAI Codex CLI (`npm install -g @openai/codex`)
-- （可选）Redis 用于持久化消息队列
-
-### Windows
-
-```batch
-cd D:\Program_Project\MCP_Monitor
-install.bat
-```
-
-### Linux / macOS
-
-```bash
-cd /path/to/MCP_Monitor
-chmod +x install.sh
-./install.sh
-```
-
-### 使用 Redis
-
-```bash
-# Linux / macOS
-./install.sh --with-redis
-
-# Windows
-install.bat --with-redis
-```
-
-### 手动安装
-
-```bash
-npm install
-npm run build
-npm link
-```
 
 ## MCP 服务器配置
 
@@ -133,9 +94,20 @@ tool_timeout_sec = 120.0
 
 [mcp_servers.codex-supervisor.env]
 CODEX_PORT = "3000"
-CODEX_DATA_DIR = "C:/Users/xukur/.codex/supervisor"  # 统一使用Codex目录
+CODEX_DATA_DIR = "C:/Users/yourusername/.codex/supervisor"  # 统一使用Codex目录
 CODEX_LOG_LEVEL = "info"
 # CODEX_NO_AUTO_VISUALIZER = "true"  # 禁用自动打开可视化界面
+```
+```nodejs
+npm i codex-supervisor
+```
+-----or----
+```nodejs
+npm install -g codex-supervisor@1.0.0 --registry=https://registry.npmjs.org/
+```
+ 项目内安装：
+```
+npm install codex-supervisor@1.0.0 --registry=https://registry.npmjs.org/
 ```
 
 **2. 可用工具列表**
@@ -232,22 +204,7 @@ AI：调用 project_check_completion → 检查完成状态
 
 当当前会话的 context 用完时，可以导出会话记录，创建新会话继续工作。
 
-### 使用流程
 
-```
-当前会话:
-1. 感觉 context 快用完了...
-2. 调用 session_export → 导出会话记录
-3. 调用 session_get_handover_prompt → 获取交接提示词
-
-新会话:
-4. 打开新的 Codex / Claude Code 会话
-5. 粘贴交接提示词
-6. 先调用 session_list_all 或 session_get_stats 确认当前活跃会话
-7. 再调用 supervisor_get_guidance 获取当前任务建议
-8. 最后调用 worker_spawn_virtual 绑定新会话
-9. 持续调用 task_report_progress 汇报进度
-```
 
 ### 推荐交接顺序
 
