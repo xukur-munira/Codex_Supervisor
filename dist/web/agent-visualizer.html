@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex Supervisor - 主agent与监控agent实时对话可视化</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: #16213e;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #0f3460;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      color: #e94560;
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.inactive {
+      background: #6b7280;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Navigation bar */
+    .nav-bar {
+      background: #0f3460;
+      padding: 10px 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      border-bottom: 1px solid #16213e;
+    }
+
+    .nav-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-label {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .nav-input {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 13px;
+      min-width: 200px;
+    }
+
+    .nav-input:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+
+    .nav-btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      background: #e94560;
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .nav-btn:hover {
+      background: #c73e54;
+    }
+
+    .nav-btn.secondary {
+      background: #4ade80;
+    }
+
+    .nav-btn.secondary:hover {
+      background: #22c55e;
+    }
+
+    /* Main container - 双面板布局 */
+    .main-container {
+      display: flex;
+      flex: 1;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* Agent panel */
+    .agent-panel {
+      flex: 1;
+      background: #0f3460;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Panel header */
+    .panel-header {
+      background: #16213e;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid;
+    }
+
+    .panel-header.main-agent {
+      border-bottom-color: #3b82f6;
+    }
+
+    .panel-header.monitor-agent {
+      border-bottom-color: #f59e0b;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .panel-icon.main-agent {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .panel-icon.monitor-agent {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .panel-title-text {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .panel-title-text.main-agent {
+      color: #3b82f6;
+    }
+
+    .panel-title-text.monitor-agent {
+      color: #f59e0b;
+    }
+
+    .panel-subtitle {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .panel-stats {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* Message list */
+    .message-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #1e293b;
+    }
+
+    /* Message styles */
+    .message {
+      margin-bottom: 12px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      animation: slideIn 0.3s ease;
+      background: #334155;
+      border-left: 4px solid;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Main agent message colors */
+    .message.user-input {
+      background: #1e3a8a;
+      border-left-color: #3b82f6;
+    }
+
+    .message.tool-call {
+      background: #1e40af;
+      border-left-color: #60a5fa;
+    }
+
+    .message.tool-result {
+      background: #1e3a5f;
+      border-left-color: #0ea5e9;
+    }
+
+    .message.worker-action {
+      background: #1e3a8a;
+      border-left-color: #3b82f6;
+    }
+
+    /* Monitor agent message colors */
+    .message.supervision {
+      background: #78350f;
+      border-left-color: #f59e0b;
+    }
+
+    .message.progress-check {
+      background: #7c2d12;
+      border-left-color: #fb923c;
+    }
+
+    .message.task-assignment {
+      background: #7c3aed;
+      border-left-color: #8b5cf6;
+    }
+
+    .message.checkpoint-review {
+      background: #6b21a8;
+      border-left-color: #a855f7;
+    }
+
+    .message.status-update {
+      background: #5b21b6;
+      border-left-color: #c084fc;
+    }
+
+    /* Common message types */
+    .message.status {
+      background: #475569;
+      border-left-color: #94a3b8;
+    }
+
+    .message.error {
+      background: #7f1d1d;
+      border-left-color: #ef4444;
+    }
+
+    .message.info {
+      background: #334155;
+      border-left-color: #64748b;
+    }
+
+    .message.heartbeat {
+      background: #14532d;
+      border-left-color: #22c55e;
+    }
+
+    /* Message content */
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .message-type {
+      font-size: 12px;
+      font-weight: bold;
+      color: #cbd5e1;
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .message-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #e2e8f0;
+    }
+
+    .message-meta {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #475569;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    /* Center divider */
+    .center-divider {
+      width: 50px;
+      background: #16213e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 10px;
+    }
+
+    .divider-icon {
+      font-size: 20px;
+      color: #4ade80;
+    }
+
+    .divider-label {
+      font-size: 10px;
+      color: #6b7280;
+      text-align: center;
+      writing-mode: vertical-rl;
+      letter-spacing: 1px;
+    }
+
+    /* Footer */
+    .footer {
+      background: #16213e;
+      padding: 10px 20px;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #0f3460;
+      color: #94a3b8;
+    }
+
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-label {
+      color: #6b7280;
+    }
+
+    .footer-value {
+      color: #e2e8f0;
+      font-weight: bold;
+    }
+
+    /* Scrollbar */
+    .message-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .message-list::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    .message-list::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+
+    .message-list::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    /* Connection status */
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4ade80;
+    }
+
+    .connection-dot.disconnected {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <div class="nav-bar">
+    <div class="nav-group" style="flex: 1;">
+      <span class="nav-label">主agent会话ID:</span>
+      <input type="text" id="sessionSearch" class="nav-input" placeholder="输入主agent的会话ID..." style="min-width: 400px; flex: 1;" />
+      <button id="searchBtn" class="nav-btn">搜索</button>
+      <button id="clearSearchBtn" class="nav-btn secondary">清除</button>
+    </div>
+    <div class="nav-group">
+      <span class="nav-label" style="font-size: 11px; color: #6b7280;">提示：输入会话ID查看主agent与监控agent的完整对话记录</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🔴 Codex Supervisor - 主agent与监控agent实时对话</h1>
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-dot" id="mainAgentDot"></span>
+        <span>主agent</span>
+      </div>
+      <div class="status-item">
+        <span class="status-dot" id="monitorAgentDot"></span>
+        <span>监控agent</span>
+      </div>
+      <div class="status-item">
+        <span id="sessionCount">会话: 0</span>
+      </div>
+      <div class="status-item">
+        <span class="connection-dot" id="connectionDot"></span>
+        <span id="connectionText">连接中...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container - 双面板 -->
+  <div class="main-container">
+    <!-- 左侧：主Agent面板 -->
+    <div class="agent-panel">
+      <div class="panel-header main-agent">
+        <div class="panel-title">
+          <div class="panel-icon main-agent">M</div>
+          <div>
+            <div class="panel-title-text main-agent">主 Agent (Main Agent)</div>
+            <div class="panel-subtitle">Codex CLI调用者的真实会话记录</div>
+          </div>
+        </div>
+        <div class="panel-stats" id="mainAgentStats">消息数: 0</div>
+      </div>
+      <div class="message-list" id="mainAgentMessages">
+        <div class="message info">
+          <div class="message-header">
+            <div class="message-type">[系统]</div>
+            <div class="message-time">--:--:--</div>
+          </div>
+          <div class="message-content">等待主agent会话连接...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中间分隔符 -->
+    <div class="center-divider">
+      <div class="divider-icon">⚡</div>
+      <div class="divider-label">实时监控</div>
+      <div class="divider-icon">👁️</div>
+      <div class="divider-label">监督指令</div>
+      <div class="divider-icon">🔄</div>
+      <div class="divider-label">状态同步</div>
+    </div>
+
+    <!-- 右侧：监控Agent面板 -->
+    <div class="agent-panel">
+      <div class="panel-header monitor-agent">
+        <div class="panel-title">
+          <div class="panel-icon monitor-agent">S</div>
+          <div>
+            <div class="panel-title-text monitor-agent">监控 Agent (Monitor Agent)</div>
+            <div class="panel-subtitle">Supervisor监督行为与进度检查</div>
+          </div>
+        </div>
+        <div class="panel-stats" id="monitorAgentStats">监督消息: 0</div>
+      </div>
+      <div class="message-list" id="monitorAgentMessages">
+        <div class="message info">
+          <div class="message-header">
+            <div class="message-type">[系统]</div>
+            <div class="message-time">--:--:--</div>
+          </div>
+          <div class="message-content">等待监控agent启动...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-item">
+      <span class="footer-label">当前会话:</span>
+      <span class="footer-value" id="currentSessionId">-</span>
+    </div>
+    <div class="footer-item">
+      <span class="footer-label">绑定状态:</span>
+      <span class="footer-value" id="bindingStatus">未绑定</span>
+    </div>
+    <div class="footer-item">
+      <span class="footer-label">项目:</span>
+      <span class="footer-value" id="projectName">无</span>
+    </div>
+    <div class="footer-item">
+      <span class="footer-label">监控会话:</span>
+      <span class="footer-value" id="monitorSessionId">-</span>
+    </div>
+    <div class="footer-item">
+      <span class="footer-label">总消息数:</span>
+      <span class="footer-value" id="totalMessageCount">0</span>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let ws;
+    let reconnectInterval;
+    let mainAgentMessageCount = 0;
+    let monitorAgentMessageCount = 0;
+    let currentSessionId = '';
+    let monitorSessionId = '';
+    let currentProjectId = '';
+    let currentProject = null;
+    let bindingInfo = null;
+
+    // WebSocket connection
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname || 'localhost';
+      const port = window.location.port || '3000';
+      ws = new WebSocket(`${protocol}//${host}:${port}/ws/visualizer`);
+
+      ws.onopen = async () => {
+        document.getElementById('connectionDot').classList.remove('disconnected');
+        document.getElementById('connectionText').textContent = '已连接';
+
+        if (reconnectInterval) {
+          clearInterval(reconnectInterval);
+          reconnectInterval = null;
+        }
+
+        // Load initial data
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSessionId = urlParams.get('sessionId');
+        if (urlSessionId) {
+          document.getElementById('sessionSearch').value = urlSessionId;
+          await searchBySession(urlSessionId);
+        } else {
+          addSystemMessage('请在上方输入主agent的会话ID以查看对话记录');
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('connectionDot').classList.add('disconnected');
+        document.getElementById('connectionText').textContent = '断开连接';
+        if (!reconnectInterval) {
+          reconnectInterval = setInterval(connect, 5000);
+        }
+        addSystemMessage('连接断开，正在重连...', 'both');
+      };
+
+      ws.onerror = (err) => console.error('WebSocket error:', err);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        // Filter by session if active
+        if (currentSessionId && data.content?.sessionId && data.content.sessionId !== currentSessionId) {
+          return;
+        }
+
+        handleMessage(data);
+      };
+    }
+
+    // Search by session ID
+    async function searchBySession(sessionId) {
+      sessionId = sessionId.trim();
+      if (!sessionId) {
+        clearSearch();
+        return;
+      }
+
+      currentSessionId = sessionId;
+      document.getElementById('currentSessionId').textContent = sessionId.substring(0, 12) + '...';
+      addSystemMessage(`正在搜索主agent会话: ${sessionId}`, 'both');
+
+      // Load binding info
+      try {
+        const bindingRes = await fetch(`/api/bindings/${encodeURIComponent(sessionId)}`);
+        if (bindingRes.ok) {
+          bindingInfo = await bindingRes.json();
+          monitorSessionId = bindingInfo.monitorAgentSessionId;
+          currentProjectId = bindingInfo.projectId;
+          document.getElementById('monitorSessionId').textContent = monitorSessionId.substring(0, 12) + '...';
+          document.getElementById('bindingStatus').textContent = '已绑定';
+          addSystemMessage(`找到会话绑定：监控agent会话ID = ${monitorSessionId}`, 'monitor');
+
+          // Load project info
+          if (currentProjectId) {
+            const projectRes = await fetch(`/api/projects/${currentProjectId}`);
+            if (projectRes.ok) {
+              currentProject = await projectRes.json();
+              document.getElementById('projectName').textContent = currentProject.name || '无';
+            }
+          }
+        } else {
+          document.getElementById('bindingStatus').textContent = '未找到绑定';
+          addSystemMessage('未找到此会话的绑定信息（可能是旧版本会话）', 'monitor');
+        }
+      } catch (err) {
+        console.error('Failed to load binding:', err);
+        addSystemMessage('加载会话绑定信息失败', 'monitor');
+      }
+
+      // Load messages for this session
+      clearPanels();
+      if (currentProjectId) {
+        await loadMessages(currentProjectId, sessionId);
+      } else {
+        // Try to find in all projects
+        await loadAllProjects();
+        for (const project of allProjects) {
+          const found = await loadMessages(project.id, sessionId);
+          if (found) break;
+        }
+      }
+    }
+
+    let allProjects = [];
+    async function loadAllProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        allProjects = await res.json();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+      }
+    }
+
+    async function loadMessages(projectId, sessionId) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/messages?sessionId=${encodeURIComponent(sessionId)}`);
+        const data = await res.json();
+
+        if (data.messages && data.messages.length > 0) {
+          addSystemMessage(`加载了 ${data.messages.length} 条历史消息`, 'both');
+
+          for (const msg of data.messages) {
+            handleMessage({
+              type: msg.type || 'info',
+              source: msg.source || 'worker',
+              timestamp: msg.timestamp,
+              content: msg.content
+            });
+          }
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+        return false;
+      }
+    }
+
+    function clearSearch() {
+      currentSessionId = '';
+      monitorSessionId = '';
+      bindingInfo = null;
+      document.getElementById('sessionSearch').value = '';
+      document.getElementById('currentSessionId').textContent = '-';
+      document.getElementById('monitorSessionId').textContent = '-';
+      document.getElementById('bindingStatus').textContent = '未绑定';
+      document.getElementById('projectName').textContent = '无';
+      clearPanels();
+      addSystemMessage('请在上方输入主agent的会话ID以查看对话记录', 'both');
+    }
+
+    function clearPanels() {
+      mainAgentMessageCount = 0;
+      monitorAgentMessageCount = 0;
+      document.getElementById('mainAgentStats').textContent = '消息数: 0';
+      document.getElementById('monitorAgentStats').textContent = '监督消息: 0';
+      document.getElementById('totalMessageCount').textContent = '0';
+
+      document.getElementById('mainAgentMessages').innerHTML = '';
+      document.getElementById('monitorAgentMessages').innerHTML = '';
+    }
+
+    // Handle incoming message
+    function handleMessage(data) {
+      const { type, source, timestamp, content } = data;
+
+      // Determine which panel to display
+      let targetPanel;
+      let isMonitorAgent = false;
+
+      if (source === 'monitor-agent' || source === 'supervisor') {
+        targetPanel = 'monitorAgentMessages';
+        isMonitorAgent = true;
+        monitorAgentMessageCount++;
+        document.getElementById('monitorAgentStats').textContent = `监督消息: ${monitorAgentMessageCount}`;
+      } else {
+        // worker, user, or other sources → main agent panel
+        targetPanel = 'mainAgentMessages';
+        mainAgentMessageCount++;
+        document.getElementById('mainAgentStats').textContent = `消息数: ${mainAgentMessageCount}`;
+      }
+
+      const total = mainAgentMessageCount + monitorAgentMessageCount;
+      document.getElementById('totalMessageCount').textContent = total;
+
+      // Create message element
+      const panel = document.getElementById(targetPanel);
+      const msgDiv = createMessageElement(type, timestamp, content, isMonitorAgent);
+      panel.appendChild(msgDiv);
+
+      // Auto scroll to bottom
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    function createMessageElement(type, timestamp, content, isMonitorAgent) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${type}`;
+
+      const time = new Date(timestamp).toLocaleTimeString();
+
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'message-header';
+
+      const typeDiv = document.createElement('div');
+      typeDiv.className = 'message-type';
+      typeDiv.textContent = getMessageTypeLabel(type, isMonitorAgent);
+
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'message-time';
+      timeDiv.textContent = time;
+
+      headerDiv.appendChild(typeDiv);
+      headerDiv.appendChild(timeDiv);
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.textContent = formatMessageContent(type, content);
+
+      msgDiv.appendChild(headerDiv);
+      msgDiv.appendChild(contentDiv);
+
+      // Add meta info if available
+      if (content.sessionId || content.projectId || content.workerId) {
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'message-meta';
+        const metaParts = [];
+        if (content.sessionId) metaParts.push(`会话: ${content.sessionId.substring(0, 8)}`);
+        if (content.projectId) metaParts.push(`项目: ${content.projectId.substring(0, 8)}`);
+        if (content.workerId) metaParts.push(`Worker: ${content.workerId.substring(0, 8)}`);
+        metaDiv.textContent = metaParts.join(' | ');
+        msgDiv.appendChild(metaDiv);
+      }
+
+      return msgDiv;
+    }
+
+    function getMessageTypeLabel(type, isMonitorAgent) {
+      if (isMonitorAgent) {
+        const monitorLabels = {
+          'supervision': '[监督]',
+          'progress-check': '[进度检查]',
+          'task-assignment': '[任务分配]',
+          'checkpoint-review': '[检查点审查]',
+          'status-update': '[状态更新]',
+          'tool-result': '[监控结果]',
+          'status': '[状态]',
+          'error': '[错误]',
+          'info': '[信息]'
+        };
+        return monitorLabels[type] || `[${type}]`;
+      } else {
+        const mainLabels = {
+          'user-input': '[用户输入]',
+          'tool-call': '[工具调用]',
+          'tool-result': '[执行结果]',
+          'worker-action': '[Worker动作]',
+          'progress': '[进度]',
+          'heartbeat': '[心跳]',
+          'status': '[状态]',
+          'error': '[错误]',
+          'info': '[信息]'
+        };
+        return mainLabels[type] || `[${type}]`;
+      }
+    }
+
+    function formatMessageContent(type, content) {
+      if (typeof content === 'string') return content;
+
+      switch (type) {
+        case 'supervision':
+          return content.message || `监督消息: 主agent正在执行 ${content.mainAgentAction || '未知操作'}`;
+
+        case 'progress-check':
+          return content.message || `进度检查: ${content.supervisionResult?.progress || 0}%`;
+
+        case 'tool-call':
+          return `调用工具: ${content.tool || '未知'}\n参数: ${JSON.stringify(content.args || {}, null, 2)}`;
+
+        case 'tool-result':
+          if (content.error) {
+            return `错误: ${content.error}`;
+          }
+          const resultStr = typeof content.result === 'object'
+            ? JSON.stringify(content.result, null, 2)
+            : String(content.result || '');
+          return resultStr.length > 500 ? resultStr.substring(0, 500) + '\n... (已截断)' : resultStr;
+
+        case 'status':
+          return content.message || '状态更新';
+
+        case 'progress':
+          return content.summary || `任务 ${content.taskId?.substring(0, 8) || '未知'} 状态: ${content.status || '未知'}`;
+
+        case 'heartbeat':
+          return `Worker ${content.workerId?.substring(0, 8) || '未知'} 心跳: 在线`;
+
+        default:
+          return JSON.stringify(content, null, 2);
+      }
+    }
+
+    function addSystemMessage(text, target = 'both') {
+      const time = new Date().toLocaleTimeString();
+
+      if (target === 'both' || target === 'main') {
+        const panel = document.getElementById('mainAgentMessages');
+        const msgDiv = createSystemMessageElement(time, text);
+        panel.appendChild(msgDiv);
+        panel.scrollTop = panel.scrollHeight;
+      }
+
+      if (target === 'both' || target === 'monitor') {
+        const panel = document.getElementById('monitorAgentMessages');
+        const msgDiv = createSystemMessageElement(time, text);
+        panel.appendChild(msgDiv);
+        panel.scrollTop = panel.scrollHeight;
+      }
+    }
+
+    function createSystemMessageElement(time, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message info';
+
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'message-header';
+
+      const typeDiv = document.createElement('div');
+      typeDiv.className = 'message-type';
+      typeDiv.textContent = '[系统]';
+
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'message-time';
+      timeDiv.textContent = time;
+
+      headerDiv.appendChild(typeDiv);
+      headerDiv.appendChild(timeDiv);
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.textContent = text;
+
+      msgDiv.appendChild(headerDiv);
+      msgDiv.appendChild(contentDiv);
+
+      return msgDiv;
+    }
+
+    // Event bindings
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      searchBySession(document.getElementById('sessionSearch').value);
+    });
+
+    document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
+
+    document.getElementById('sessionSearch').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchBySession(e.target.value);
+    });
+
+    // Start connection
+    connect();
+  </script>
+</body>
+</html>

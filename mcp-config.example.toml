@@ -1,0 +1,15 @@
+# Codex Supervisor MCP Server Configuration
+# Copy this block into ~/.codex/config.toml
+
+[mcp_servers.codex-supervisor]
+type = "stdio"
+command = "node"
+args = ["D:/Program_Project/MCP_Monitor/dist/index.js", "mcp"]
+startup_timeout_sec = 30.0
+tool_timeout_sec = 120.0
+
+[mcp_servers.codex-supervisor.env]
+CODEX_PORT = "3000"
+CODEX_DATA_DIR = "C:/Users/xukur/.codex-supervisor"
+CODEX_LOG_LEVEL = "info"
+# CODEX_REDIS_URL = "redis://localhost:6379"  # Uncomment to use Redis

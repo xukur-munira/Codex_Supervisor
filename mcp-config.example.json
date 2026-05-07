@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "codex-supervisor": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["D:/Program_Project/MCP_Monitor/dist/index.js"],
+      "env": {
+        "CODEX_REDIS_URL": "redis://localhost:6379",
+        "CODEX_DATA_DIR": "C:/Users/xukur/.claude/supervisor",
+        "CODEX_LOG_LEVEL": "info"
+      }
+    }
+  }
+}
