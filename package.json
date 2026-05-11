@@ -1,11 +1,15 @@
 {
   "name": "codex-supervisor",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "External Supervisor for OpenAI Codex CLI - manages projects with task decomposition, worker spawning, checkpoint review, and completion verification",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xukur-munira/Codex_Supervisor"
+  },
   "main": "dist/index.js",
   "bin": {
-    "codex-supervisor": "./dist/index.js"
+    "codex-supervisor": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && node scripts/copy-static.js",

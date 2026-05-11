@@ -17,7 +17,8 @@ describe('package contract', () => {
     expect(packageJson.name).toBe('codex-supervisor');
     expect(packageJson.type).toBe('module');
     expect(packageJson.main).toBe('dist/index.js');
-    expect(packageJson.bin['codex-supervisor']).toBe('./dist/index.js');
+    expect(packageJson.bin['codex-supervisor']).toBe('dist/index.js');
+    expect(packageJson.repository.url).toBe('https://github.com/xukur-munira/Codex_Supervisor');
 
     await fileExists(packageJson.main);
     await fileExists(packageJson.bin['codex-supervisor']);
