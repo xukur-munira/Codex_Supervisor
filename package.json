@@ -1,6 +1,6 @@
 {
   "name": "codex-supervisor",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "External Supervisor for OpenAI Codex CLI - manages projects with task decomposition, worker spawning, checkpoint review, and completion verification",
   "type": "module",
   "main": "dist/index.js",
