@@ -2,7 +2,7 @@
 
 Codex Supervisor 是面向 OpenAI Codex CLI 的外部监督器。它提供项目状态管理、任务分解、Worker 管理、Checkpoint 审核、完成验收、MCP 工具接入、REST API 和可视化界面。
 
-当前发布包版本：`1.0.0`。
+当前发布包版本：`1.0.9`。
 
 ## 核心能力
 
