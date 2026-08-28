@@ -30,19 +30,19 @@ npm install -g @openai/codex
 全局安装：
 
 ```bash
-npm install -g codex-supervisor@1.0.0 --registry=https://registry.npmjs.org/
+npm install -g codex-supervisor@1.0.9 --registry=https://registry.npmjs.org/
 ```
 
 项目内安装：
 
 ```bash
-npm install codex-supervisor@1.0.0 --registry=https://registry.npmjs.org/
+npm install codex-supervisor@1.0.9 --registry=https://registry.npmjs.org/
 ```
 
 使用 `npx` 直接运行：
 
 ```bash
-npx -y codex-supervisor@1.0.0 help
+npx -y codex-supervisor@1.0.9 help
 ```
 
 ## CLI 命令
